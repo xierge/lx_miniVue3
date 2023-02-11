@@ -1,1 +1,3 @@
-console.log('lx')
+import { isString } from '@vue/shared'
+
+console.log(isString('lx'))
