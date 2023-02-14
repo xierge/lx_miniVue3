@@ -64,7 +64,7 @@ var Vue = (function (exports) {
     /*
      * @Date: 2023-02-13 15:47:09
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-13 18:41:41
+     * @LastEditTime: 2023-02-14 12:37:25
      * @FilePath: /lx_miniVue3/packages/reactivity/src/effect.ts
      * @description: effect函数的 依赖的追踪和触发
      */
@@ -72,7 +72,7 @@ var Vue = (function (exports) {
     var targetMap = new WeakMap();
     // 追踪收集依赖
     function track(target, key) {
-        if (!ativeEffect)
+        if (!activeEffect)
             return;
         var depsMap = targetMap.get(target);
         if (!depsMap) {
@@ -86,7 +86,7 @@ var Vue = (function (exports) {
     }
     // dep集合里面追加effect函数
     function trackEffects(dep) {
-        dep.add(ativeEffect);
+        dep.add(activeEffect);
     }
     // 触发依赖
     function trigger(target, key, value) {
@@ -119,7 +119,7 @@ var Vue = (function (exports) {
         effect.run();
     }
     // 全局缓存当前的ReactiveEfeect的实例
-    var ativeEffect;
+    var activeEffect;
     function effect(fn) {
         var _effect = new ReactiveEfeect(fn);
         // 第一次初始化直接执行函数
@@ -131,7 +131,7 @@ var Vue = (function (exports) {
             this.fn = fn;
         }
         ReactiveEfeect.prototype.run = function () {
-            ativeEffect = this;
+            activeEffect = this;
             return this.fn();
         };
         return ReactiveEfeect;
@@ -170,9 +170,23 @@ var Vue = (function (exports) {
     }
 
     /*
+     * @Date: 2023-02-11 21:48:37
+     * @LastEditors: lipengxi 2899952565@qq.com
+     * @LastEditTime: 2023-02-14 13:41:52
+     * @FilePath: /lx_miniVue3/packages/shared/src/index.ts
+     * @description: 工具方法
+     */
+    var isObject = function (value) {
+        return value !== null && typeof value === 'object';
+    };
+    var hasChanged = function (value, oldValue) {
+        return !Object.is(value, oldValue);
+    };
+
+    /*
      * @Date: 2023-02-13 14:35:04
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-13 14:53:38
+     * @LastEditTime: 2023-02-14 12:30:27
      * @FilePath: /lx_miniVue3/packages/reactivity/src/reactive.ts
      * @description:
      */
@@ -194,9 +208,77 @@ var Vue = (function (exports) {
         //   返回proxy代理对象
         return proxy;
     }
+    var toReactive = function (value) {
+        return isObject(value) ? reactive(value) : value;
+    };
+
+    /*
+     * @Date: 2023-02-14 12:19:05
+     * @LastEditors: lipengxi 2899952565@qq.com
+     * @LastEditTime: 2023-02-14 14:32:25
+     * @FilePath: /lx_miniVue3/packages/reactivity/src/ref.ts
+     * @description: ref实现
+     */
+    // 入口函数
+    function ref(value) {
+        return createRef(value, false);
+    }
+    // 创建ref
+    function createRef(rawValue, shallow) {
+        // 判断是否是ref类型
+        if (isRef(rawValue)) {
+            return rawValue;
+        }
+        return new RefImpl(rawValue, shallow);
+    }
+    function isRef(r) {
+        return !!(r && r.__v_isRef === true);
+    }
+    // 判断是否是ref类型
+    function trackRefValue(ref) {
+        if (activeEffect) {
+            trackEffects(ref.dep || (ref.dep = createDep()));
+        }
+    }
+    // RefImpl类
+    var RefImpl = /** @class */ (function () {
+        function RefImpl(value, __v_isShallow) {
+            this.__v_isShallow = __v_isShallow;
+            this.dep = undefined;
+            this.__v_isRef = true;
+            // 根据是否是复杂数据类型返回value
+            this._value = __v_isShallow ? value : toReactive(value);
+            // 原始数据
+            this._rawValue = value;
+        }
+        Object.defineProperty(RefImpl.prototype, "value", {
+            // getter方法 value读取的时候触发
+            get: function () {
+                // 收集effect依赖函数
+                trackRefValue(this);
+                return this._value;
+            },
+            // setter方法 value改变时出发
+            set: function (val) {
+                if (hasChanged(val, this._rawValue)) {
+                    this._rawValue = val;
+                    this._value = toReactive(val);
+                    triggerRef(this);
+                }
+            },
+            enumerable: false,
+            configurable: true
+        });
+        return RefImpl;
+    }());
+    // 触发依赖函数
+    function triggerRef(ref) {
+        ref.dep && triggerEffects(ref.dep);
+    }
 
     exports.effect = effect;
     exports.reactive = reactive;
+    exports.ref = ref;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 

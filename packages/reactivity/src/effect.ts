@@ -1,7 +1,7 @@
 /*
  * @Date: 2023-02-13 15:47:09
  * @LastEditors: lipengxi 2899952565@qq.com
- * @LastEditTime: 2023-02-13 18:41:41
+ * @LastEditTime: 2023-02-14 12:37:25
  * @FilePath: /lx_miniVue3/packages/reactivity/src/effect.ts
  * @description: effect函数的 依赖的追踪和触发
  */
@@ -14,7 +14,7 @@ const targetMap = new WeakMap<any, KeyToDepMap>()
 
 // 追踪收集依赖
 export function track(target: object, key: unknown) {
-  if (!ativeEffect) return
+  if (!activeEffect) return
 
   let depsMap = targetMap.get(target)
 
@@ -31,7 +31,7 @@ export function track(target: object, key: unknown) {
 
 // dep集合里面追加effect函数
 export function trackEffects(dep: Dep) {
-  dep.add(ativeEffect!)
+  dep.add(activeEffect!)
 }
 
 // 触发依赖
@@ -55,7 +55,7 @@ export function triggerEffect(effect: ReactiveEfeect) {
 }
 
 // 全局缓存当前的ReactiveEfeect的实例
-export let ativeEffect: ReactiveEfeect | undefined
+export let activeEffect: ReactiveEfeect | undefined
 
 export function effect<T = any>(fn: () => T) {
   const _effect = new ReactiveEfeect(fn)
@@ -67,7 +67,7 @@ export function effect<T = any>(fn: () => T) {
 export class ReactiveEfeect<T = any> {
   constructor(public fn: () => T) {}
   run() {
-    ativeEffect = this
+    activeEffect = this
     return this.fn()
   }
 }

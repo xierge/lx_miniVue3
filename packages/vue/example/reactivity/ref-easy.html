@@ -1,0 +1,38 @@
+<!--
+ * @Date: 2023-02-13 15:01:47
+ * @LastEditors: lipengxi 2899952565@qq.com
+ * @LastEditTime: 2023-02-14 13:48:07
+ * @FilePath: /lx_miniVue3/packages/vue/example/reactivity/ref-easy.html
+ * @description: 测试ref
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="../../dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div id="p1"></div>
+      <div id="p2"></div>
+    </div>
+    <script>
+      const { reactive, effect, ref } = Vue
+      const proxy = ref('lx')
+      effect(() => {
+        document.querySelector('#p1').innerHTML = proxy.value
+      })
+
+      effect(() => {
+        document.querySelector('#p2').innerHTML = proxy.value
+      })
+
+      setTimeout(() => {
+        proxy.value = 'lsq'
+      }, 1000)
+    </script>
+  </body>
+</html>
