@@ -1,0 +1,41 @@
+<!--
+ * @Date: 2023-02-13 15:01:47
+ * @LastEditors: lipengxi 2899952565@qq.com
+ * @LastEditTime: 2023-02-17 11:05:50
+ * @FilePath: /lx_miniVue3/packages/vue/example/reactivity/computed.html
+ * @description: 测试computed
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="../../dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      const { effect, computed, reactive } = Vue
+      const obj = reactive({
+        name: 'lx'
+      })
+      const computedName = computed(() => {
+        console.log('computed 执行')
+        return '姓名' + obj.name
+      })
+
+      effect(() => {
+        document.querySelector('#app').innerHTML = computedName.value
+        console.log(computedName.value)
+        console.log(computedName.value)
+        console.log(computedName.value)
+      })
+
+      setTimeout(() => {
+        obj.name = 'lsq'
+      }, 1000)
+    </script>
+  </body>
+</html>

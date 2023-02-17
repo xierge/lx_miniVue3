@@ -1,14 +1,15 @@
 /*
  * @Date: 2023-02-13 15:47:09
  * @LastEditors: lipengxi 2899952565@qq.com
- * @LastEditTime: 2023-02-14 12:37:25
+ * @LastEditTime: 2023-02-17 11:19:44
  * @FilePath: /lx_miniVue3/packages/reactivity/src/effect.ts
  * @description: effect函数的 依赖的追踪和触发
  */
 
+import { ComputedRefImpl } from './computed'
 import { createDep, Dep } from './dep'
 type KeyToDepMap = Map<any, Dep>
-
+export type EffectScheduler = (...args: any) => any
 // getter插入数据内容 setter时获取数据内容
 const targetMap = new WeakMap<any, KeyToDepMap>()
 
@@ -45,13 +46,25 @@ export function trigger(target: object, key: unknown, value: unknown) {
 export function triggerEffects(dep: Dep) {
   const effects = Array.isArray(dep) ? dep : [...dep]
   for (const effect of effects) {
-    triggerEffect(effect)
+    if (effect.computed) {
+      triggerEffect(effect)
+    }
+  }
+
+  for (const effect of effects) {
+    if (!effect.computed) {
+      triggerEffect(effect)
+    }
   }
 }
 
 // 执行每一个effect里的函数
 export function triggerEffect(effect: ReactiveEfeect) {
-  effect.run()
+  if (effect.scheduler) {
+    effect.scheduler()
+  } else {
+    effect.run()
+  }
 }
 
 // 全局缓存当前的ReactiveEfeect的实例
@@ -65,7 +78,8 @@ export function effect<T = any>(fn: () => T) {
 
 // ReactiveEfeect 类
 export class ReactiveEfeect<T = any> {
-  constructor(public fn: () => T) {}
+  computed?: ComputedRefImpl<T>
+  constructor(public fn: () => T, public scheduler?: EffectScheduler | null) {}
   run() {
     activeEffect = this
     return this.fn()

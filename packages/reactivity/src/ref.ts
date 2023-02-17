@@ -1,7 +1,7 @@
 /*
  * @Date: 2023-02-14 12:19:05
  * @LastEditors: lipengxi 2899952565@qq.com
- * @LastEditTime: 2023-02-14 14:32:25
+ * @LastEditTime: 2023-02-17 10:49:45
  * @FilePath: /lx_miniVue3/packages/reactivity/src/ref.ts
  * @description: ref实现
  */
@@ -35,13 +35,6 @@ export function isRef(r: any): r is Ref {
   return !!(r && r.__v_isRef === true)
 }
 
-// 判断是否是ref类型
-export function trackRefValue(ref: RefImpl<unknown>) {
-  if (activeEffect) {
-    trackEffects(ref.dep || (ref.dep = createDep()))
-  }
-}
-
 // RefImpl类
 class RefImpl<T> {
   private _value: T
@@ -69,12 +62,19 @@ class RefImpl<T> {
     if (hasChanged(val, this._rawValue)) {
       this._rawValue = val
       this._value = toReactive(val)
-      triggerRef(this)
+      triggerRefValue(this)
     }
   }
 }
 
+// 收集依赖 判断是否是ref类型
+export function trackRefValue(ref) {
+  if (activeEffect) {
+    trackEffects(ref.dep || (ref.dep = createDep()))
+  }
+}
+
 // 触发依赖函数
-export function triggerRef(ref: RefImpl<unknown>) {
+export function triggerRefValue(ref) {
   ref.dep && triggerEffects(ref.dep)
 }
