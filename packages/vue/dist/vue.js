@@ -64,7 +64,7 @@ var Vue = (function (exports) {
     /*
      * @Date: 2023-02-13 15:47:09
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-14 12:37:25
+     * @LastEditTime: 2023-02-17 11:19:25
      * @FilePath: /lx_miniVue3/packages/reactivity/src/effect.ts
      * @description: effect函数的 依赖的追踪和触发
      */
@@ -98,12 +98,14 @@ var Vue = (function (exports) {
     }
     // 触发dep集合里面所有effect
     function triggerEffects(dep) {
-        var e_1, _a;
+        var e_1, _a, e_2, _b;
         var effects = Array.isArray(dep) ? dep : __spreadArray([], __read(dep), false);
         try {
             for (var effects_1 = __values(effects), effects_1_1 = effects_1.next(); !effects_1_1.done; effects_1_1 = effects_1.next()) {
                 var effect_1 = effects_1_1.value;
-                triggerEffect(effect_1);
+                if (effect_1.computed) {
+                    triggerEffect(effect_1);
+                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -113,10 +115,30 @@ var Vue = (function (exports) {
             }
             finally { if (e_1) throw e_1.error; }
         }
+        try {
+            for (var effects_2 = __values(effects), effects_2_1 = effects_2.next(); !effects_2_1.done; effects_2_1 = effects_2.next()) {
+                var effect_2 = effects_2_1.value;
+                if (!effect_2.computed) {
+                    triggerEffect(effect_2);
+                }
+            }
+        }
+        catch (e_2_1) { e_2 = { error: e_2_1 }; }
+        finally {
+            try {
+                if (effects_2_1 && !effects_2_1.done && (_b = effects_2.return)) _b.call(effects_2);
+            }
+            finally { if (e_2) throw e_2.error; }
+        }
     }
     // 执行每一个effect里的函数
     function triggerEffect(effect) {
-        effect.run();
+        if (effect.scheduler) {
+            effect.scheduler();
+        }
+        else {
+            effect.run();
+        }
     }
     // 全局缓存当前的ReactiveEfeect的实例
     var activeEffect;
@@ -127,8 +149,9 @@ var Vue = (function (exports) {
     }
     // ReactiveEfeect 类
     var ReactiveEfeect = /** @class */ (function () {
-        function ReactiveEfeect(fn) {
+        function ReactiveEfeect(fn, scheduler) {
             this.fn = fn;
+            this.scheduler = scheduler;
         }
         ReactiveEfeect.prototype.run = function () {
             activeEffect = this;
@@ -140,7 +163,7 @@ var Vue = (function (exports) {
     /*
      * @Date: 2023-02-13 14:43:54
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-13 18:44:35
+     * @LastEditTime: 2023-02-17 11:19:16
      * @FilePath: /lx_miniVue3/packages/reactivity/src/baseHandler.ts
      * @description: new Proxy() 时的setter，getter函数定义
      */
@@ -172,7 +195,7 @@ var Vue = (function (exports) {
     /*
      * @Date: 2023-02-11 21:48:37
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-14 13:41:52
+     * @LastEditTime: 2023-02-14 15:59:36
      * @FilePath: /lx_miniVue3/packages/shared/src/index.ts
      * @description: 工具方法
      */
@@ -182,11 +205,14 @@ var Vue = (function (exports) {
     var hasChanged = function (value, oldValue) {
         return !Object.is(value, oldValue);
     };
+    var isFunction = function (val) {
+        return typeof val === 'function';
+    };
 
     /*
      * @Date: 2023-02-13 14:35:04
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-14 12:30:27
+     * @LastEditTime: 2023-02-15 20:50:57
      * @FilePath: /lx_miniVue3/packages/reactivity/src/reactive.ts
      * @description:
      */
@@ -215,7 +241,7 @@ var Vue = (function (exports) {
     /*
      * @Date: 2023-02-14 12:19:05
      * @LastEditors: lipengxi 2899952565@qq.com
-     * @LastEditTime: 2023-02-14 14:32:25
+     * @LastEditTime: 2023-02-17 10:49:45
      * @FilePath: /lx_miniVue3/packages/reactivity/src/ref.ts
      * @description: ref实现
      */
@@ -233,12 +259,6 @@ var Vue = (function (exports) {
     }
     function isRef(r) {
         return !!(r && r.__v_isRef === true);
-    }
-    // 判断是否是ref类型
-    function trackRefValue(ref) {
-        if (activeEffect) {
-            trackEffects(ref.dep || (ref.dep = createDep()));
-        }
     }
     // RefImpl类
     var RefImpl = /** @class */ (function () {
@@ -263,7 +283,7 @@ var Vue = (function (exports) {
                 if (hasChanged(val, this._rawValue)) {
                     this._rawValue = val;
                     this._value = toReactive(val);
-                    triggerRef(this);
+                    triggerRefValue(this);
                 }
             },
             enumerable: false,
@@ -271,11 +291,62 @@ var Vue = (function (exports) {
         });
         return RefImpl;
     }());
+    // 收集依赖 判断是否是ref类型
+    function trackRefValue(ref) {
+        if (activeEffect) {
+            trackEffects(ref.dep || (ref.dep = createDep()));
+        }
+    }
     // 触发依赖函数
-    function triggerRef(ref) {
+    function triggerRefValue(ref) {
         ref.dep && triggerEffects(ref.dep);
     }
 
+    /*
+     * @Date: 2023-02-14 15:57:26
+     * @LastEditors: lipengxi 2899952565@qq.com
+     * @LastEditTime: 2023-02-17 11:10:27
+     * @FilePath: /lx_miniVue3/packages/reactivity/src/computed.ts
+     * @description:
+     */
+    function computed(getterOrOptions) {
+        var getter;
+        var onlyGetter = isFunction(getterOrOptions);
+        if (onlyGetter) {
+            getter = getterOrOptions;
+        }
+        var cRef = new ComputedRefImpl(getter);
+        return cRef;
+    }
+    var ComputedRefImpl = /** @class */ (function () {
+        function ComputedRefImpl(getter) {
+            var _this = this;
+            this._dirty = true;
+            this.__v_isRef = true;
+            this.effect = new ReactiveEfeect(getter, function () {
+                if (!_this._dirty) {
+                    _this._dirty = true;
+                    triggerRefValue(_this);
+                }
+            });
+            this.effect.computed = this;
+        }
+        Object.defineProperty(ComputedRefImpl.prototype, "value", {
+            get: function () {
+                trackRefValue(this);
+                if (this._dirty) {
+                    this._dirty = false;
+                    this._value = this.effect.run();
+                }
+                return this._value;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        return ComputedRefImpl;
+    }());
+
+    exports.computed = computed;
     exports.effect = effect;
     exports.reactive = reactive;
     exports.ref = ref;
